@@ -5,7 +5,7 @@ NOTE: Currently Windows Only
 Note: Currently very early in development
 Note: bugs... maybe many
 
-# Todo list for the contributers
+## Todo list for the contributers
 - rewrite outroAudioInterpreter.py and make it more integrated with main.py
 - fix the ~500ms lag for starting
 - add in radio buttons in the gui for GPU support
