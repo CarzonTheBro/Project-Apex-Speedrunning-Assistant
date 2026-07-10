@@ -1,4 +1,5 @@
 import time
+import threading
 import numpy as np
 import ffmpeg
 import pyaudiowpatch as pyaudio
@@ -9,7 +10,7 @@ TARGET_RATE = 44100
 
 
 def load_sample_as_array(path: str, target_rate: int = TARGET_RATE) -> np.ndarray:
-    """Decode an audio file to a mono float32 numpy array via ffmpeg."""
+    # Decode an audio file to a mono float32 numpy array via ffmpeg.
     out, _ = (
         ffmpeg
         .input(path)
@@ -20,7 +21,7 @@ def load_sample_as_array(path: str, target_rate: int = TARGET_RATE) -> np.ndarra
 
 
 def is_roblox_running() -> bool:
-    """Use pycaw to check whether Roblox has an active audio session."""
+    # Use pycaw to check whether Roblox has an active audio session.
     sessions = AudioUtilities.GetAllSessions()
     for session in sessions:
         if session.Process and session.Process.name() == "RobloxPlayerBeta.exe":
@@ -29,21 +30,6 @@ def is_roblox_running() -> bool:
 
 
 def audioIsForEnding(sensitivity: float, liveAudio: np.ndarray, sampleAudio: np.ndarray) -> bool:
-    """
-    sampleAudio is expected to already be phase-inverted. If it truly
-    matches a stretch of liveAudio, adding them together cancels out
-    toward silence at the correct alignment.
-
-    liveAudio should be a bit longer than sampleAudio -- this slides
-    sampleAudio across liveAudio and finds the offset that cancels out
-    the most (i.e. minimizes residual RMS), rather than assuming the
-    two start at exactly the same instant.
-
-    sensitivity: residual-RMS threshold. LOWER = stricter match (closer
-    to true silence). Since input is float32 PCM in roughly [-1, 1],
-    something like 0.02-0.05 is a reasonable starting point -- tune it
-    against real captures.
-    """
     n = len(sampleAudio)
     if n == 0 or len(liveAudio) < n:
         return False
@@ -83,56 +69,80 @@ def get_loopback_device(p: "pyaudio.PyAudio"):
     return default_speakers
 
 
-def monitor_roblox_audio(sensitivity: float = 0.05, sample_path: str = SAMPLE_PATH, poll_interval: float = 0.5):
-    """
-    Continuously listens to system audio output and checks it against
-    the reference sample whenever Roblox is running.
-    """
+def monitor_roblox_audio(
+    sensitivity: float = 0.05,
+    sample_path: str = SAMPLE_PATH,
+    poll_interval: float = 0.5,
+    frame_seconds: float = 0.05,
+    on_ending=None,
+    stop_event: "threading.Event | None" = None,
+):
     sample = load_sample_as_array(sample_path)
     sample_seconds = len(sample) / TARGET_RATE
     alignment_slop = 0.3  # extra seconds of buffer to search for best alignment
-    chunk_seconds = max(sample_seconds + alignment_slop, 0.5)
+    buffer_seconds = sample_seconds + alignment_slop
+    buffer_len = int(buffer_seconds * TARGET_RATE)
 
     p = pyaudio.PyAudio()
     device = get_loopback_device(p)
     rate = int(device["defaultSampleRate"])
     channels = device["maxInputChannels"]
-    chunk_frames = int(chunk_seconds * rate)
+    frame_frames = max(int(frame_seconds * rate), 1)
 
     stream = p.open(
         format=pyaudio.paFloat32,
         channels=channels,
         rate=rate,
-        frames_per_buffer=chunk_frames,
+        frames_per_buffer=frame_frames,
         input=True,
         input_device_index=device["index"],
     )
 
+    # Rolling buffer of recent live audio, resampled to TARGET_RATE, mono.
+    live_buffer = np.zeros(0, dtype=np.float64)
+
     print("Listening... (Ctrl+C to stop)")
     try:
-        while True:
+        while stop_event is None or not stop_event.is_set():
             if not is_roblox_running():
+                # Drop stale audio so it can't be compared against once
+                # Roblox restarts later.
+                live_buffer = np.zeros(0, dtype=np.float64)
                 time.sleep(poll_interval)
                 continue
 
-            raw = stream.read(chunk_frames, exception_on_overflow=False)
-            live_audio = np.frombuffer(raw, dtype=np.float32)
+            raw = stream.read(frame_frames, exception_on_overflow=False)
+            frame = np.frombuffer(raw, dtype=np.float32)
 
             # If captured audio is multi-channel, collapse to mono to
             # match the mono sample.
             if channels > 1:
-                live_audio = live_audio.reshape(-1, channels).mean(axis=1)
+                frame = frame.reshape(-1, channels).mean(axis=1)
 
-            # Resample live_audio to TARGET_RATE if the device rate differs.
+            # Resample this frame to TARGET_RATE if the device rate differs.
             if rate != TARGET_RATE:
-                live_audio = np.interp(
-                    np.linspace(0, len(live_audio), int(len(live_audio) * TARGET_RATE / rate)),
-                    np.arange(len(live_audio)),
-                    live_audio,
+                frame = np.interp(
+                    np.linspace(0, len(frame), int(len(frame) * TARGET_RATE / rate)),
+                    np.arange(len(frame)),
+                    frame,
                 )
 
-            if audioIsForEnding(sensitivity, live_audio, sample):
+            live_buffer = np.concatenate([live_buffer, frame])
+            if len(live_buffer) > buffer_len:
+                live_buffer = live_buffer[-buffer_len:]
+
+            # Not enough audio accumulated yet to compare against the sample.
+            if len(live_buffer) < len(sample):
+                continue
+
+            # Check happens every frame now, against the rolling buffer.
+            if audioIsForEnding(sensitivity, live_buffer, sample):
                 print("Detected ending audio!")
+                if on_ending is not None:
+                    on_ending()
+                # Clear the buffer so the same audio can't immediately
+                # re-trigger a match on the very next frame.
+                live_buffer = np.zeros(0, dtype=np.float64)
 
     except KeyboardInterrupt:
         pass
