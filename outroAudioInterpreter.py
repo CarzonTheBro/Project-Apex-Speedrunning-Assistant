@@ -158,4 +158,4 @@ def crossTest(sensitivity: float = 0.01):
     return audioIsForEnding(sensitivity, live, sample)
 
 if __name__ == "__main__":
-    test()
+    crossTest()
