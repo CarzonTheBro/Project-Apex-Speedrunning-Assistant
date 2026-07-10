@@ -1,0 +1,15 @@
+# # Ignore a specific file
+# secrets.json
+
+# # Ignore a specific folder (end with a slash)
+# node_modules/
+# /build/
+
+# # Ignore all files with a specific extension
+# *.log
+# *.tmp
+
+# # Ignore a folder everywhere in the project
+# **/temp/
+
+**/__pycache__/

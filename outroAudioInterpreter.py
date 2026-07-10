@@ -1,5 +1,4 @@
 import ffmpeg
-import ffmpeg.audio
 from pycaw.pycaw import AudioUtilities
 
 def audioIsForEnding(sensitivity, gameAudio, sampleAudio):
@@ -10,5 +9,15 @@ def audioIsForEnding(sensitivity, gameAudio, sampleAudio):
         return False
     
 def test(sensitivity):
-    sample = ffmpeg.audio("./audioSample.mp3")
+    sample = ffmpeg.input("audioSample.mp3")
     assert audioIsForEnding(sensitivity, sample, sample)
+
+def monitor_roblox_audio():
+    # Get all active audio sessions in Windows
+    sessions = AudioUtilities.GetAllSessions()
+    
+    for session in sessions:
+        volume = session.SimpleAudioVolume
+        if session.Process and session.Process.name() == "RobloxPlayerBeta.exe":
+            return session
+
