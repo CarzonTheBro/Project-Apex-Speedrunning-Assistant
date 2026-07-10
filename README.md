@@ -1,9 +1,17 @@
 # Project-Apex-Speedrunning-Assistant (PASA)
 The PASA is an open-source program to help you time your speedruns accurately.
+This was made by 2 high schoolers on a bored few days
 
 NOTE: Currently Windows Only
 Note: Currently very early in development
 Note: bugs... maybe many
+
+## What we will NOT ADD
+- Prompts to the user about positions
+- Outlining Enemies
+- Highlighting Audio Sources
+- No dynamic overlays during gameplay
+### WE DO NOT CONDONE HACKING OR EXPLOITING WITH THIS SOFTWARE
 
 ## Todo list for the contributers
 - rewrite outroAudioInterpreter.py and make it more integrated with main.py
