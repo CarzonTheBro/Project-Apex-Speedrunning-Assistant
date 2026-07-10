@@ -19,7 +19,7 @@ DEFAULT_REGIONS = {
 REGION_COLORS = {"START": "#00ff00", "DEATH": "#ff0000"}
 
 class PASAWindow:
-    def __init__(self):
+    def __init__(self, on_start_monitoring=None, on_stop_monitoring=None):
         self.root = tk.Tk()
         self.root.title("Project Apex Speedrunning Assistant")
         self.root.geometry("700x550")
@@ -36,6 +36,9 @@ class PASAWindow:
         self._active_region_editor = None
         self.edit_start_button = None
         self.edit_death_button = None
+
+        self._on_start_monitoring = on_start_monitoring
+        self._on_stop_monitoring = on_stop_monitoring
 
         self.main_frame = ttk.Frame(self.root)
         self.debug_frame = ttk.Frame(self.root)
@@ -212,14 +215,23 @@ class PASAWindow:
         self.debug_status_label.pack(fill="x", padx=20, pady=(0, 10))
 
     def toggle_monitoring(self):
-        #fix pls, start thread vs stop thread
-        if(self.monitoring):
-            pass
-            # main.startThreads(main.audioMonitorThread,main.videoMonitorThread)
+        if not self.monitoring:
+            if self._on_start_monitoring:
+                try:
+                    self._on_start_monitoring()
+                except Exception as err:
+                    self.set_debug_status(f"Failed to start monitoring: {err}")
+                    return
+            self.monitoring = True
         else:
-            pass
-            # main.stopThreads(main.audioMonitorThread,main.videoMonitorThread)
-        self.monitoring = not self.monitoring
+            if self._on_stop_monitoring:
+                try:
+                    self._on_stop_monitoring()
+                except Exception as err:
+                    self.set_debug_status(f"Failed to stop monitoring: {err}")
+                    return
+            self.monitoring = False
+
         self.monitor_button.config(
             text="Stop Monitoring" if self.monitoring else "Start Monitoring"
         )
@@ -337,6 +349,8 @@ class PASAWindow:
             self.root.after(0, lambda: self.debug_ocr_button.config(text="Test OCR"))
 
     def _on_close(self):
+        if self.monitoring and self._on_stop_monitoring:
+            self._on_stop_monitoring()
         if self.ocr_testing:
             self._stop_ocr_test()
         if self._active_region_editor is not None:
@@ -344,11 +358,8 @@ class PASAWindow:
         self.root.destroy()
 
     def test_audio(self):
-        
         if(OpenAI.crossTest()): self.set_debug_status("Cross Audio File Test Success")
         else: self.set_debug_status("Audio Failure")
-        time.sleep(2)
-        self.set_debug_status("Audio test not implemented yet.")
 
     def edit_start_capture_area(self):
         self._open_region_editor("START")
