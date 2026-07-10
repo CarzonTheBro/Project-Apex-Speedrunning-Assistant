@@ -5,7 +5,7 @@
     },
 
     "start": {
-        "text": "[ CAM CONNECTED ]",
+        "text": "CAM CONNECTED",
         "region": {
             "left": 0.30,
             "top": 0.50,
