@@ -4,9 +4,9 @@ NOTE: Currently Windows Only
 
 ## 1. Downloading
 
-Download the repository as a ZIP
-Extract contents
-Run main.py
+- Download the repository as a ZIP
+- Extract contents
+- Run main.py
 
 ## 2. Start LiveSplit's TCP Server
 
