@@ -8,6 +8,7 @@ from capture import ScreenCapture
 from overlay import CaptureRegionEditor
 from livesplitInterface import LiveSplitInterface
 from OCR import OCR
+import outroAudioInterpreter as OpenAI
 
 CONFIG_PATH = "config.json"
 
@@ -329,6 +330,10 @@ class PASAWindow:
         self.root.destroy()
 
     def test_audio(self):
+        
+        if(OpenAI.crossTest()): self.set_debug_status("Cross Audio File Test Success")
+        else: self.set_debug_status("Audio Failure")
+        time.sleep(2)
         self.set_debug_status("Audio test not implemented yet.")
 
     def edit_start_capture_area(self):

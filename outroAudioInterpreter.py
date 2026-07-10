@@ -152,11 +152,10 @@ def monitor_roblox_audio(
         p.terminate()
 
 
-def test(sensitivity: float = 0.01):
+def crossTest(sensitivity: float = 0.01):
     sample = load_sample_as_array(SAMPLE_PATH)
     live = -sample
-    assert audioIsForEnding(sensitivity, live, sample)
-    print("success")
+    return audioIsForEnding(sensitivity, live, sample)
 
 if __name__ == "__main__":
     test()
