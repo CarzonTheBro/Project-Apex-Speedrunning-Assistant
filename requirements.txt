@@ -5,5 +5,3 @@ numpy==2.5.1
 opencv_python_headless==5.0.0.93
 pyaudiowpatch==0.2.12.8
 pycaw==20251023
-PyQt5==5.15.11
-pyqt5_sip==12.18.0
