@@ -3,7 +3,6 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk
-
 from capture import ScreenCapture
 from overlay import CaptureRegionEditor
 from livesplitInterface import LiveSplitInterface
@@ -213,6 +212,13 @@ class PASAWindow:
         self.debug_status_label.pack(fill="x", padx=20, pady=(0, 10))
 
     def toggle_monitoring(self):
+        #fix pls, start thread vs stop thread
+        if(self.monitoring):
+            pass
+            # main.startThreads(main.audioMonitorThread,main.videoMonitorThread)
+        else:
+            pass
+            # main.stopThreads(main.audioMonitorThread,main.videoMonitorThread)
         self.monitoring = not self.monitoring
         self.monitor_button.config(
             text="Stop Monitoring" if self.monitoring else "Start Monitoring"

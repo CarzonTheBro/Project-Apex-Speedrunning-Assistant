@@ -1,53 +1,24 @@
-"""import json
+import json
 import time
 import threading
-
+from ui import PASAWindow
 from capture import ScreenCapture
 from OCR import OCR
-from PyQt5.QtWidgets import QApplication
-from overlay import Overlay
 import outroAudioInterpreter as OpenAI
 import livesplitInterface as LSI
 
 with open("config.json") as f:
     config = json.load(f)
 
-audio_ending_detected = threading.Event()
-
-
+stopSignal = threading.Event()
+audioEndingDetected = threading.Event()
+audioMonitorThread = None
+videoMonitorThread = None
 def on_ending():
-    audio_ending_detected.set()   # or push to a queue, trigger overlay, etc.
+    audioEndingDetected.set()   # or push to a queue, trigger overlay, etc.
 
-
-def overlay_thread(capture, targets):
-    app = QApplication([])
-    overlay = Overlay(capture.monitor, targets)
-    app.exec_()
-
-
-def main():
-    capture = ScreenCapture()
-    ocr = OCR()
-    lsiInterface = LSI.LiveSplitInterface()
-
-    fps = config["ocr"]["capture_fps"]
-
-    targets = [
-        ("START", config["start"]),
-        ("DEATH", config["death"]),
-    ]
-
-    threading.Thread(
-        target=overlay_thread, args=(capture, targets), daemon=True
-    ).start()
-
-    threading.Thread(
-        target=OpenAI.monitor_roblox_audio,
-        kwargs={"on_ending": on_ending},
-        daemon=True,
-    ).start()
-
-    while True:
+def overlayCheckThread(capture, ocr, lsiInterface, fps, targets, exitEvent):
+    while not exitEvent.is_set():
         for name, target in targets:
             image = capture.grab(target["region"])
             text = ocr.read(image)
@@ -61,18 +32,43 @@ def main():
                     lsiInterface.reset()
                 print(f">>> {name} DETECTED")
 
-        if audio_ending_detected.is_set():
+        if audioEndingDetected.is_set():
             lsiInterface.finish()
             break
         
-        time.sleep(1 / fps)"""
+        time.sleep(1 / fps)
 
-from ui import PASAWindow
-
+def startThreads(thread1, thread2):
+    thread1.start()
+    thread2.start()
+def stopThreads():
+    stopSignal.set()
 def main():
     app = PASAWindow()
-    app.run()
+    capture = ScreenCapture()
+    ocr = OCR()
+    lsiInterface = LSI.LiveSplitInterface()
+    fps = config["ocr"]["capture_fps"]
+    targets = [
+        ("START", config["start"]),
+        ("DEATH", config["death"]),
+    ]
+    audioMonitorThread = threading.Thread(
+        target=OpenAI.monitor_roblox_audio,
+        kwargs={"on_ending": on_ending},
+        args = [stopSignal],
+        daemon=True,
+    )
+    videoMonitorThread = threading.Thread(
+        target=overlayCheckThread,
+        args=[capture, ocr, lsiInterface, fps, targets, stopSignal],
+        daemon=True,
+    )
 
+    app.run()
+    
+
+    
 
 if __name__ == "__main__":
     main()
