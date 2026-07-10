@@ -10,5 +10,4 @@ def audioIsForEnding(sensitivity, gameAudio, sampleAudio):
         return False
 def test(sensitivity):
     sample = ffmpeg.audio("./audioSample.mp3")
-    overlayedAudio = ffmpeg.filter([sample,sample], 'amix', duration='shortest')
-    assert overlayedAudio.volume < sensitivity
+    assert audioIsForEnding(sensitivity, sample, sample)
