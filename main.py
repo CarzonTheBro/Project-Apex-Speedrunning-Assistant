@@ -1,21 +1,33 @@
-import ffmpeg
-import livesplitInterface
-import outroAudioInterpreter
-from ui import PASAWindow
-from pycaw.pycaw import AudioUtilities
+import json
+import time
+
+from capture import ScreenCapture
+from OCR import OCR
 
 
-
-def main():
-    outroAudioInterpreter.test(1)
-    # rblxAudio = outroAudioInterpreter.monitor_roblox_audio()
-    sample = ffmpeg.input("audioSample.mp3")
-    
-    #checks if it's for the ending or not
-    outroAudioInterpreter.audioIsForEnding(0.3, rblxAudio, sample)
-    app = PASAWindow()
-    app.run()
+with open("config.json") as f:
+    config = json.load(f)
 
 
-if __name__ == "__main__":
-    main()
+capture = ScreenCapture()
+ocr = OCR()
+
+fps = config["ocr"]["capture_fps"]
+
+targets = [
+    ("START", config["start"]),
+    ("DEATH", config["death"])
+]
+
+
+while True:
+    for name, target in targets:
+        image = capture.grab(target["region"])
+        text = ocr.read(image)
+
+        print(f"{name}: {text}")
+
+        if target["text"].lower() in text.lower():
+            print(f">>> {name} DETECTED")
+
+    time.sleep(1 / fps)
