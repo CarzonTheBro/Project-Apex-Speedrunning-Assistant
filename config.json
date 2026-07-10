@@ -1,9 +1,11 @@
 {
+    "hardwareUsage" : {
+        "useGPU": false 
+    },
     "ocr": {
         "capture_fps": 15,
         "similarity": 90
     },
-
     "start": {
         "text": "CAM CONNECTED",
         "region": {

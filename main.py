@@ -14,6 +14,7 @@ class MonitorController:
         self.capture = ScreenCapture()
         self.ocr = None
         self.lsi = LSI.LiveSplitInterface()
+        self.lsi.connect()
 
         self.fps = config["ocr"]["capture_fps"]
         self.targets = [
@@ -61,6 +62,7 @@ class MonitorController:
 
     def _video_loop(self):
         while not self._stop_signal.is_set():
+            camOn = False
             for name, target in self.targets:
                 image = self.capture.grab(target["region"])
                 text = self.ocr.read(image)
@@ -69,8 +71,11 @@ class MonitorController:
 
                 if target["text"].lower() in text.lower():
                     if name == "START":
+                        camOn = True
+                        print("Starting!")
                         self.lsi.start()
                     elif name == "DEATH":
+                        print("Died lol")
                         self.lsi.reset()
                     print(f">>> {name} DETECTED")
 
@@ -90,6 +95,7 @@ def main():
         on_stop_monitoring=controller.stop,
     )
     app.run()
+    
 
 if __name__ == "__main__":
     main()
