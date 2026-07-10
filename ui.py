@@ -19,13 +19,19 @@ class PASAWindow:
         self.main_frame = ttk.Frame(self.root)
         self.debug_frame = ttk.Frame(self.root)
         self.debug_status_text = tk.StringVar(value="Debug: Ready.")
+        self.settings_frame = ttk.Frame(self.root)
 
         self.build_main_menu()
+        self.build_settings_menu()
         self.build_debug_menu()
         self.show_main_menu()
 
     def clear_frames(self):
-        for frame in (self.main_frame, self.debug_frame):
+        for frame in (
+            self.main_frame,
+            self.settings_frame,
+            self.debug_frame,
+        ):
             frame.pack_forget()
 
     def show_main_menu(self):
@@ -35,6 +41,10 @@ class PASAWindow:
     def show_debug_menu(self):
         self.clear_frames()
         self.debug_frame.pack(fill="both", expand=True)
+
+    def show_settings_menu(self):
+        self.clear_frames()
+        self.settings_frame.pack(fill="both", expand=True)
 
     def build_main_menu(self):
         ttk.Label(
@@ -61,12 +71,49 @@ class PASAWindow:
 
         ttk.Button(
             self.main_frame,
+            text="Settings",
+            command=self.show_settings_menu,
+            width=30,
+        ).pack(pady=5)
+
+        ttk.Button(
+            self.main_frame,
             text="Debug",
             command=self.show_debug_menu,
             width=30,
         ).pack()
 
         ttk.Separator(self.main_frame).pack(fill="x", padx=25, pady=20)
+
+    def build_settings_menu(self):
+        ttk.Label(
+            self.settings_frame,
+            text="Settings",
+            font=("Segoe UI", 20, "bold"),
+        ).pack(pady=(20, 15))
+
+        ttk.Button(
+            self.settings_frame,
+            text="← Back",
+            command=self.show_main_menu,
+            width=20,
+        ).pack(pady=5)
+
+        ttk.Separator(self.settings_frame).pack(fill="x", padx=25, pady=15)
+
+        ttk.Button(
+            self.settings_frame,
+            text="Edit Start Capture Area",
+            command=self.edit_start_capture_area,
+            width=30,
+        ).pack(pady=5)
+
+        ttk.Button(
+            self.settings_frame,
+            text="Edit Death Capture Area",
+            command=self.edit_death_capture_area,
+            width=30,
+        ).pack(pady=5)
 
     def build_debug_menu(self):
         ttk.Label(
@@ -169,6 +216,12 @@ class PASAWindow:
 
     def test_audio(self):
         self.set_debug_status("Audio test not implemented yet.")
+
+    def edit_start_capture_area(self):
+        self.set_debug_status("Editing start capture area...")
+
+    def edit_death_capture_area(self):
+        self.set_debug_status("Editing death capture area...")
 
     def run(self):
         self.root.mainloop()
