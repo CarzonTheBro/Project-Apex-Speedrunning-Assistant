@@ -1,0 +1,7 @@
+easyocr==1.7.2
+ffmpeg_python==0.2.0
+mss==10.2.0
+numpy==2.5.1
+opencv_python_headless==5.0.0.93
+pyaudiowpatch==0.2.12.8
+pycaw==20251023
