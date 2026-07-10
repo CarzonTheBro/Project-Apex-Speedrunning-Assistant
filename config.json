@@ -1,0 +1,26 @@
+{
+    "ocr": {
+        "capture_fps": 15,
+        "similarity": 90
+    },
+
+    "start": {
+        "text": "[ CAM CONNECTED ]",
+        "region": {
+            "left": 0.30,
+            "top": 0.08,
+            "width": 0.40,
+            "height": 0.06
+        }
+    },
+
+    "death": {
+        "text": "MISSION FAILED",
+        "region": {
+            "left": 0.30,
+            "top": 0.45,
+            "width": 0.40,
+            "height": 0.06
+        }
+    }
+}
