@@ -1,10 +1,22 @@
+import json
 import threading
 import time
 import tkinter as tk
 from tkinter import ttk
 
+from capture import ScreenCapture
+from overlay import CaptureRegionEditor
 from livesplitInterface import LiveSplitInterface
+from OCR import OCR
 
+CONFIG_PATH = "config.json"
+
+DEFAULT_REGIONS = {
+    "START": {"left": 0.30, "top": 0.52, "width": 0.40, "height": 0.06},
+    "DEATH": {"left": 0.30, "top": 0.45, "width": 0.40, "height": 0.06},
+}
+
+REGION_COLORS = {"START": "#00ff00", "DEATH": "#ff0000"}
 
 class PASAWindow:
     def __init__(self):
@@ -15,6 +27,11 @@ class PASAWindow:
 
         self.monitoring = False
         self.livesplit = LiveSplitInterface()
+        self.config = self._load_config()
+
+        self.ocr_testing = False
+        self._ocr_stop_event = None
+        self.debug_ocr_button = None
 
         self.main_frame = ttk.Frame(self.root)
         self.debug_frame = ttk.Frame(self.root)
@@ -22,9 +39,19 @@ class PASAWindow:
         self.settings_frame = ttk.Frame(self.root)
 
         self.build_main_menu()
-        self.build_settings_menu()
         self.build_debug_menu()
+        self.build_settings_menu()
         self.show_main_menu()
+
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _load_config(self):
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+
+    def _save_config(self):
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(self.config, f, indent=4)
 
     def clear_frames(self):
         for frame in (
@@ -71,19 +98,31 @@ class PASAWindow:
 
         ttk.Button(
             self.main_frame,
-            text="Settings",
-            command=self.show_settings_menu,
+            text="Debug",
+            command=self.show_debug_menu,
             width=30,
         ).pack(pady=5)
 
         ttk.Button(
             self.main_frame,
-            text="Debug",
-            command=self.show_debug_menu,
+            text="Settings",
+            command=self.show_settings_menu,
             width=30,
         ).pack()
 
         ttk.Separator(self.main_frame).pack(fill="x", padx=25, pady=20)
+
+        ttk.Label(
+            self.main_frame,
+            text="Credits",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(pady=(5, 2))
+
+        ttk.Label(
+            self.main_frame,
+            text="Placeholder Name One   •   Placeholder Name Two",
+            font=("Segoe UI", 9),
+        ).pack(pady=(0, 10))
 
     def build_settings_menu(self):
         ttk.Label(
@@ -144,12 +183,16 @@ class PASAWindow:
                 ).pack()
                 self._last_title = title
 
-            ttk.Button(
+            btn = ttk.Button(
                 self.debug_frame,
                 text=text,
                 command=command,
                 width=30,
-            ).pack(pady=5)
+            )
+            btn.pack(pady=5)
+
+            if title == "OCR" and text == "Test OCR":
+                self.debug_ocr_button = btn
 
         ttk.Separator(self.debug_frame).pack(fill="x", padx=25, pady=20)
 
@@ -167,8 +210,8 @@ class PASAWindow:
         self.monitor_button.config(
             text="Stop Monitoring" if self.monitoring else "Start Monitoring"
         )
-        self.debug_status_text.set(
-            f"Debug: Monitoring {'started' if self.monitoring else 'stopped'}."
+        self.set_debug_status(
+            f"Monitoring {'started' if self.monitoring else 'stopped'}."
         )
 
     def set_debug_status(self, message):
@@ -212,16 +255,117 @@ class PASAWindow:
         threading.Thread(target=worker, daemon=True).start()
 
     def test_ocr(self):
-        self.set_debug_status("OCR test not implemented yet.")
+        if self.ocr_testing:
+            self._stop_ocr_test()
+        else:
+            self._start_ocr_test()
+
+    def _start_ocr_test(self):
+        self.ocr_testing = True
+        self._ocr_stop_event = threading.Event()
+        if self.debug_ocr_button:
+            self.debug_ocr_button.config(text="Stop OCR Test")
+        self.set_debug_status("Starting OCR test...")
+        threading.Thread(target=self._ocr_test_loop, daemon=True).start()
+
+    def _stop_ocr_test(self):
+        self.ocr_testing = False
+        if self._ocr_stop_event:
+            self._ocr_stop_event.set()
+        if self.debug_ocr_button:
+            self.debug_ocr_button.config(text="Test OCR")
+        self.set_debug_status("OCR test stopped.")
+
+    def _ocr_test_loop(self):
+        stop_event = self._ocr_stop_event
+
+        try:
+            capture = ScreenCapture()
+        except Exception as err:
+            self._safe_status(f"Could not start capture: {err}")
+            self._force_ocr_stopped()
+            return
+
+        try:
+            ocr = OCR()
+        except Exception as err:
+            self._safe_status(f"Could not load OCR engine: {err}")
+            self._force_ocr_stopped()
+            return
+
+        targets = [("START", self.config["start"]), ("DEATH", self.config["death"])]
+        fps = self.config.get("ocr", {}).get("capture_fps", 15)
+
+        last_message = None
+        self._safe_status("Watching for START / DEATH text...")
+
+        while not stop_event.is_set():
+            found = None
+            for name, target in targets:
+                image = capture.grab(target["region"])
+                text = ocr.read(image)
+                if target["text"].lower() in text.lower():
+                    found = name
+                    break
+
+            message = f"Detected {found}!" if found else "Watching for START / DEATH text..."
+            if message != last_message:
+                self._safe_status(message)
+                last_message = message
+
+            time.sleep(1 / fps)
+
+    def _safe_status(self, message):
+        self.root.after(0, lambda: self.set_debug_status(message))
+
+    def _force_ocr_stopped(self):
+        self.ocr_testing = False
+        if self.debug_ocr_button:
+            self.root.after(0, lambda: self.debug_ocr_button.config(text="Test OCR"))
+
+    def _on_close(self):
+        if self.ocr_testing:
+            self._stop_ocr_test()
+        self.root.destroy()
 
     def test_audio(self):
         self.set_debug_status("Audio test not implemented yet.")
 
     def edit_start_capture_area(self):
-        self.set_debug_status("Editing start capture area...")
+        self._open_region_editor("START")
 
     def edit_death_capture_area(self):
-        self.set_debug_status("Editing death capture area...")
+        self._open_region_editor("DEATH")
+
+    def _open_region_editor(self, name):
+        key = "start" if name == "START" else "death"
+
+        try:
+            capture = ScreenCapture()
+        except Exception as err:
+            self.set_debug_status(f"Could not read monitor info: {err}")
+            return
+        monitor = capture.monitor
+
+        def on_save(new_region):
+            self.config[key]["region"] = new_region
+            self._save_config()
+            self.set_debug_status(f"{name} capture area saved.")
+
+        def on_cancel():
+            self.set_debug_status(f"{name} capture area edit cancelled.")
+
+        self.set_debug_status(f"Editing {name.lower()} capture area...")
+        CaptureRegionEditor(
+            self.root,
+            monitor["width"], monitor["height"],
+            name=name,
+            region=self.config[key]["region"],
+            default_region=DEFAULT_REGIONS[name],
+            color=REGION_COLORS[name],
+            on_save=on_save,
+            on_cancel=on_cancel,
+        )
 
     def run(self):
         self.root.mainloop()

@@ -1,4 +1,4 @@
-import json
+"""import json
 import time
 import threading
 
@@ -65,7 +65,13 @@ def main():
             lsiInterface.finish()
             break
         
-        time.sleep(1 / fps)
+        time.sleep(1 / fps)"""
+
+from ui import PASAWindow
+
+def main():
+    app = PASAWindow()
+    app.run()
 
 
 if __name__ == "__main__":
