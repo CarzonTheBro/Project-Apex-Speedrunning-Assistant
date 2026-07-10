@@ -17,7 +17,7 @@ def monitor_roblox_audio():
 rblxAudio = monitor_roblox_audio()
 
 def main():
-    sample = ffmpeg.audio("./audioSample.mp3")
+    sample = ffmpeg.input("./audioSample.mp3")
     #checks if it's for the ending or not
     outroAudioInterpreter.audioIsForEnding(rblxAudio,sample)
     app = PASAWindow()
