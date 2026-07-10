@@ -34,6 +34,10 @@ class PASAWindow:
         self._ocr_stop_event = None
         self.debug_ocr_button = None
 
+        self._active_region_editor = None
+        self.edit_start_button = None
+        self.edit_death_button = None
+
         self.main_frame = ttk.Frame(self.root)
         self.debug_frame = ttk.Frame(self.root)
         self.debug_status_text = tk.StringVar(value="Debug: Ready.")
@@ -121,7 +125,7 @@ class PASAWindow:
 
         ttk.Label(
             self.main_frame,
-            text="Placeholder Name One   •   Placeholder Name Two",
+            text="CarzonTheBro   •   Mintysharky",
             font=("Segoe UI", 9),
         ).pack(pady=(0, 10))
 
@@ -131,29 +135,31 @@ class PASAWindow:
             text="Settings",
             font=("Segoe UI", 20, "bold"),
         ).pack(pady=(20, 15))
-
+ 
         ttk.Button(
             self.settings_frame,
             text="← Back",
             command=self.show_main_menu,
             width=20,
         ).pack(pady=5)
-
+ 
         ttk.Separator(self.settings_frame).pack(fill="x", padx=25, pady=15)
-
-        ttk.Button(
+ 
+        self.edit_start_button = ttk.Button(
             self.settings_frame,
             text="Edit Start Capture Area",
             command=self.edit_start_capture_area,
             width=30,
-        ).pack(pady=5)
-
-        ttk.Button(
+        )
+        self.edit_start_button.pack(pady=5)
+ 
+        self.edit_death_button = ttk.Button(
             self.settings_frame,
             text="Edit Death Capture Area",
             command=self.edit_death_capture_area,
             width=30,
-        ).pack(pady=5)
+        )
+        self.edit_death_button.pack(pady=5)
 
     def build_debug_menu(self):
         ttk.Label(
@@ -327,6 +333,8 @@ class PASAWindow:
     def _on_close(self):
         if self.ocr_testing:
             self._stop_ocr_test()
+        if self._active_region_editor is not None:
+            self._active_region_editor.destroy()
         self.root.destroy()
 
     def test_audio(self):
@@ -343,25 +351,34 @@ class PASAWindow:
         self._open_region_editor("DEATH")
 
     def _open_region_editor(self, name):
+        if self._active_region_editor is not None:
+            self.set_debug_status("Finish or cancel the current capture area edit first.")
+            return
+ 
         key = "start" if name == "START" else "death"
-
+ 
         try:
             capture = ScreenCapture()
         except Exception as err:
             self.set_debug_status(f"Could not read monitor info: {err}")
             return
         monitor = capture.monitor
-
+ 
         def on_save(new_region):
             self.config[key]["region"] = new_region
             self._save_config()
             self.set_debug_status(f"{name} capture area saved.")
-
+            self._active_region_editor = None
+            self._set_edit_buttons_enabled(True)
+ 
         def on_cancel():
             self.set_debug_status(f"{name} capture area edit cancelled.")
-
+            self._active_region_editor = None
+            self._set_edit_buttons_enabled(True)
+ 
         self.set_debug_status(f"Editing {name.lower()} capture area...")
-        CaptureRegionEditor(
+        self._set_edit_buttons_enabled(False)
+        self._active_region_editor = CaptureRegionEditor(
             self.root,
             monitor["width"], monitor["height"],
             name=name,
@@ -371,6 +388,13 @@ class PASAWindow:
             on_save=on_save,
             on_cancel=on_cancel,
         )
-
+ 
+    def _set_edit_buttons_enabled(self, enabled: bool):
+        state = ["!disabled"] if enabled else ["disabled"]
+        if self.edit_start_button:
+            self.edit_start_button.state(state)
+        if self.edit_death_button:
+            self.edit_death_button.state(state)
+ 
     def run(self):
         self.root.mainloop()
