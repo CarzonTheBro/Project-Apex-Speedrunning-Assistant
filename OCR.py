@@ -1,9 +1,7 @@
 import easyocr
 import cv2
 
-
 class OCR:
-
     def __init__(self):
         self.reader = easyocr.Reader(["en"], gpu=False)
 

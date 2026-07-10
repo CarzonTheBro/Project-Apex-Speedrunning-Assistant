@@ -1,9 +1,7 @@
 import mss
 import numpy as np
 
-
 class ScreenCapture:
-
     def __init__(self):
         self.sct = mss.mss()
         self.monitor = self.sct.monitors[1]
@@ -17,9 +15,6 @@ class ScreenCapture:
         }
 
     def grab(self, region):
-
         pixel_region = self.region_to_pixels(region)
-
         img = self.sct.grab(pixel_region)
-
         return np.array(img)
