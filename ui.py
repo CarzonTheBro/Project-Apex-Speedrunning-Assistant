@@ -8,6 +8,7 @@ from overlay import CaptureRegionEditor
 from livesplitInterface import LiveSplitInterface
 from OCR import OCR
 import outroAudioInterpreter as OpenAI
+import theme
 
 CONFIG_PATH = "config.json"
 
@@ -24,6 +25,10 @@ class PASAWindow:
         self.root.title("Project Apex Speedrunning Assistant")
         self.root.geometry("700x550")
         self.root.resizable(False, False)
+        self.root.configure(bg=theme.BG)
+
+        self.style = ttk.Style(self.root)
+        theme.apply_ttk_theme(self.style)
 
         self.monitoring = False
         self.livesplit = LiveSplitInterface()
@@ -80,23 +85,39 @@ class PASAWindow:
         self.clear_frames()
         self.settings_frame.pack(fill="both", expand=True)
 
+    def _section_label(self, parent, name, text):
+        row = ttk.Frame(parent)
+        accent = theme.REGION_ACCENTS.get(name, theme.ACCENT)
+        tag = tk.Frame(row, bg=accent, width=4)
+        tag.pack(side="left", fill="y", padx=(0, 8))
+        ttk.Label(row, text=text, style="Section.TLabel").pack(side="left")
+        return row
+
     def build_main_menu(self):
         ttk.Label(
             self.main_frame,
-            text="Project Apex Speedrunning Assistant",
-            font=("Segoe UI", 20, "bold"),
-        ).pack(pady=(30, 10))
+            text="PROJECT APEX",
+            style="Title.TLabel",
+        ).pack(pady=(34, 0))
+
+        ttk.Label(
+            self.main_frame,
+            text="SPEEDRUNNING ASSISTANT",
+            font=("Consolas", 11),
+            foreground=theme.ACCENT,
+            background=theme.BG,
+        ).pack(pady=(0, 14))
 
         ttk.Label(
             self.main_frame,
             text="Automatically controls LiveSplit using OCR and audio detection.",
-            font=("Segoe UI", 10),
+            style="Subtitle.TLabel",
         ).pack(pady=(0, 20))
 
         ttk.Label(
             self.main_frame,
-            text="Pre-Alpha [Public Build]",
-            font=("Segoe UI", 8),
+            text="PRE-ALPHA  |  PUBLIC BUILD",
+            style="Caption.TLabel",
         ).pack()
 
         ttk.Separator(self.main_frame).pack(fill="x", padx=25, pady=20)
@@ -105,6 +126,7 @@ class PASAWindow:
             self.main_frame,
             text="Start Monitoring",
             command=self.toggle_monitoring,
+            style="Accent.TButton",
             width=30,
         )
         self.monitor_button.pack(pady=10)
@@ -128,20 +150,20 @@ class PASAWindow:
         ttk.Label(
             self.main_frame,
             text="Credits",
-            font=("Segoe UI", 11, "bold"),
+            style="Section.TLabel",
         ).pack(pady=(5, 2))
 
         ttk.Label(
             self.main_frame,
-            text="CarzonTheBro   •   Mintysharky",
-            font=("Segoe UI", 9),
+            text="CarzonTheBro   &   Mintysharky",
+            style="Subtitle.TLabel",
         ).pack(pady=(0, 10))
 
     def build_settings_menu(self):
         ttk.Label(
             self.settings_frame,
             text="Settings",
-            font=("Segoe UI", 20, "bold"),
+            style="Title.TLabel",
         ).pack(pady=(20, 15))
  
         ttk.Button(
@@ -152,7 +174,11 @@ class PASAWindow:
         ).pack(pady=5)
  
         ttk.Separator(self.settings_frame).pack(fill="x", padx=25, pady=15)
- 
+
+        self._section_label(
+            self.settings_frame, "START", "Capture Regions"
+        ).pack(fill="x", padx=25, pady=(0, 10))
+
         self.edit_start_button = ttk.Button(
             self.settings_frame,
             text="Edit Start Capture Area",
@@ -173,7 +199,7 @@ class PASAWindow:
         ttk.Label(
             self.debug_frame,
             text="Debug",
-            font=("Segoe UI", 20, "bold"),
+            style="Title.TLabel",
         ).pack(pady=(20, 15))
 
         ttk.Button(
@@ -194,7 +220,7 @@ class PASAWindow:
                 ttk.Label(
                     self.debug_frame,
                     text=title,
-                    font=("Segoe UI", 12, "bold"),
+                    style="Section.TLabel",
                 ).pack()
                 self._last_title = title
 
@@ -211,14 +237,18 @@ class PASAWindow:
 
         ttk.Separator(self.debug_frame).pack(fill="x", padx=25, pady=20)
 
+        status_bar = ttk.Frame(self.debug_frame, style="Panel.TFrame")
+        status_bar.pack(fill="x", padx=20, pady=(0, 10))
+
         self.debug_status_label = ttk.Label(
-            self.debug_frame,
+            status_bar,
             textvariable=self.debug_status_text,
-            font=("Segoe UI", 10),
+            style="Status.TLabel",
             anchor="w",
             justify="left",
+            padding=(10, 8),
         )
-        self.debug_status_label.pack(fill="x", padx=20, pady=(0, 10))
+        self.debug_status_label.pack(fill="x")
 
     def toggle_monitoring(self):
         if not self.monitoring:
@@ -239,7 +269,8 @@ class PASAWindow:
             self.monitoring = False
 
         self.monitor_button.config(
-            text="Stop Monitoring" if self.monitoring else "Start Monitoring"
+            text="Stop Monitoring" if self.monitoring else "Start Monitoring",
+            style="Stop.TButton" if self.monitoring else "Accent.TButton",
         )
         self.set_debug_status(
             f"Monitoring {'started' if self.monitoring else 'stopped'}."
