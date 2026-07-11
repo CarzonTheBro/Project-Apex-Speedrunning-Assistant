@@ -1,5 +1,5 @@
 # Project-Apex-Speedrunning-Assistant (PASA)
-The PASA is an open-source program to help you time your speedruns accurately.
+PASA is an open-source program to help you time your speedruns accurately.
 This was made by 2 high schoolers on a bored few days
 
 NOTE: Currently Windows Only
