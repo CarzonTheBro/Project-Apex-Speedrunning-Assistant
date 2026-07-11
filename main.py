@@ -9,12 +9,14 @@ import outroAudioInterpreter as OpenAI
 import livesplitInterface as LSI
 
 class MonitorController:
-    def __init__(self, config):
+    def __init__(self, config, notify=None):
         self.config = config
         self.capture = ScreenCapture()
         self.ocr = None
         self.lsi = LSI.LiveSplitInterface()
         self.lsi.connect()
+        self.notify = notify
+        self._last_event = None
 
         self.fps = config["ocr"]["capture_fps"]
         self.targets = [
@@ -62,7 +64,7 @@ class MonitorController:
 
     def _video_loop(self):
         while not self._stop_signal.is_set():
-            camOn = False
+            detected_event = None
             for name, target in self.targets:
                 image = self.capture.grab(target["region"])
                 text = self.ocr.read(image)
@@ -70,14 +72,29 @@ class MonitorController:
                 print(f"{name}: {text}")
 
                 if target["text"].lower() in text.lower():
-                    if name == "START":
-                        camOn = True
+                    detected_event = name
+                    break
+
+            if detected_event:
+                if detected_event != self._last_event:
+                    self._last_event = detected_event
+                    if detected_event == "START":
                         print("Starting!")
                         self.lsi.start()
-                    elif name == "DEATH":
+                        if self.notify:
+                            self.notify(
+                                "Detected game start, started LiveSplit timer!"
+                            )
+                    elif detected_event == "DEATH":
                         print("Died lol")
                         self.lsi.reset()
-                    print(f">>> {name} DETECTED")
+                        if self.notify:
+                            self.notify(
+                                "Detected death, reset LiveSplit timer."
+                            )
+                    print(f">>> {detected_event} DETECTED")
+            else:
+                self._last_event = None
 
             if self._audio_ending.is_set():
                 self.lsi.finish()
@@ -89,11 +106,10 @@ def main():
     with open("config.json") as f:
         config = json.load(f)
 
-    controller = MonitorController(config)
-    app = PASAWindow(
-        on_start_monitoring=controller.start,
-        on_stop_monitoring=controller.stop,
-    )
+    app = PASAWindow(config=config)
+    controller = MonitorController(config, notify=app.notify)
+    app._on_start_monitoring = controller.start
+    app._on_stop_monitoring = controller.stop
     app.run()
     
 

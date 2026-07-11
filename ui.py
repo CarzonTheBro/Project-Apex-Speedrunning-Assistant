@@ -8,6 +8,7 @@ from overlay import CaptureRegionEditor
 from livesplitInterface import LiveSplitInterface
 from OCR import OCR
 import outroAudioInterpreter as OpenAI
+import notifications
 import theme
 
 CONFIG_PATH = "config.json"
@@ -20,10 +21,10 @@ DEFAULT_REGIONS = {
 REGION_COLORS = {"START": "#00ff00", "DEATH": "#ff0000"}
 
 class PASAWindow:
-    def __init__(self, on_start_monitoring=None, on_stop_monitoring=None):
+    def __init__(self, config, on_start_monitoring=None, on_stop_monitoring=None):
         self.root = tk.Tk()
         self.root.title("Project Apex Speedrunning Assistant")
-        self.root.geometry("700x550")
+        self.root.geometry("700x700")
         self.root.resizable(False, False)
         self.root.configure(bg=theme.BG)
 
@@ -32,7 +33,13 @@ class PASAWindow:
 
         self.monitoring = False
         self.livesplit = LiveSplitInterface()
-        self.config = self._load_config()
+        self.config = config if config is not None else self._load_config()
+        self.notification_manager = notifications.NotificationManager(
+            self.root,
+            enabled=self.config.get("notifications", {}).get("enabled", True),
+            timeout_seconds=self.config.get("notifications", {}).get("timeout_seconds", 5),
+        )
+        self.notify = self.notification_manager.show
 
         self.ocr_testing = False
         self._ocr_stop_event = None
@@ -59,7 +66,9 @@ class PASAWindow:
 
     def _load_config(self):
         with open(CONFIG_PATH) as f:
-            return json.load(f)
+            config = json.load(f)
+        config.setdefault("notifications", {"enabled": True, "timeout_seconds": 5})
+        return config
 
     def _save_config(self):
         with open(CONFIG_PATH, "w") as f:
@@ -194,6 +203,45 @@ class PASAWindow:
             width=30,
         )
         self.edit_death_button.pack(pady=5)
+
+        self._section_label(
+            self.settings_frame, "NOTIFICATIONS", "Notifications"
+        ).pack(fill="x", padx=25, pady=(20, 10))
+
+        self.notification_enabled_var = tk.BooleanVar(
+            value=self.config["notifications"].get("enabled", True)
+        )
+        self.notification_timeout_var = tk.DoubleVar(
+            value=self.config["notifications"].get("timeout_seconds", 5)
+        )
+
+        ttk.Checkbutton(
+            self.settings_frame,
+            text="Enable pop-up notifications",
+            variable=self.notification_enabled_var,
+            command=self._on_notification_setting_changed,
+        ).pack(fill="x", padx=25, pady=(0, 10))
+
+        timeout_row = ttk.Frame(self.settings_frame)
+        timeout_row.pack(fill="x", padx=25, pady=(0, 10))
+        ttk.Label(
+            timeout_row,
+            text="Notification duration (seconds):",
+            style="Subtitle.TLabel",
+        ).pack(side="left")
+        self.notification_timeout_spinbox = ttk.Spinbox(
+            timeout_row,
+            from_=1,
+            to=30,
+            increment=1,
+            textvariable=self.notification_timeout_var,
+            width=5,
+            command=self._on_notification_setting_changed,
+        )
+        self.notification_timeout_spinbox.pack(side="right")
+        self.notification_timeout_var.trace_add(
+            "write", lambda *_: self._on_notification_setting_changed()
+        )
 
     def build_debug_menu(self):
         ttk.Label(
@@ -380,6 +428,22 @@ class PASAWindow:
     def _safe_status(self, message):
         self.root.after(0, lambda: self.set_debug_status(message))
 
+    def _on_notification_setting_changed(self):
+        self.config.setdefault("notifications", {})
+        self.config["notifications"]["enabled"] = self.notification_enabled_var.get()
+        try:
+            timeout_value = float(self.notification_timeout_var.get())
+        except (TypeError, ValueError):
+            timeout_value = self.config["notifications"].get("timeout_seconds", 5)
+            self.notification_timeout_var.set(timeout_value)
+        self.config["notifications"]["timeout_seconds"] = max(0.5, timeout_value)
+        self._save_config()
+        self.notification_manager.update_settings(
+            enabled=self.config["notifications"]["enabled"],
+            timeout_seconds=self.config["notifications"]["timeout_seconds"],
+        )
+        self.set_debug_status("Notification settings saved.")
+
     def _force_ocr_stopped(self):
         self.ocr_testing = False
         if self.debug_ocr_button:
@@ -392,6 +456,8 @@ class PASAWindow:
             self._stop_ocr_test()
         if self._active_region_editor is not None:
             self._active_region_editor.destroy()
+        if hasattr(self, "notification_manager"):
+            self.notification_manager.destroy()
         self.root.destroy()
 
     def test_audio(self):

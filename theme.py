@@ -48,6 +48,13 @@ def apply_ttk_theme(style):
         "Status.TLabel", background=BG, foreground=ACCENT, font=FONT_MONO
     )
     style.configure(
+        "Notification.TLabel",
+        background=BG_PANEL,
+        foreground=TEXT,
+        font=FONT_BODY,
+        padding=8,
+    )
+    style.configure(
         "Start.TLabel", background=BG, foreground=START_COLOR, font=FONT_SECTION
     )
     style.configure(
