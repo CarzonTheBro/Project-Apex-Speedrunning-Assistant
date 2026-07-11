@@ -91,6 +91,12 @@ class PASAWindow:
             self.main_frame,
             text="Automatically controls LiveSplit using OCR and audio detection.",
             font=("Segoe UI", 10),
+        ).pack(pady=(0, 20))
+
+        ttk.Label(
+            self.main_frame,
+            text="Pre-Alpha [Public Build]",
+            font=("Segoe UI", 8),
         ).pack()
 
         ttk.Separator(self.main_frame).pack(fill="x", padx=25, pady=20)
